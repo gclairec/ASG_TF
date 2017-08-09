@@ -22,20 +22,20 @@ class am2302 : public Sensor {
   int checkDHTStatus(float, float);
 };
 
-class temperature : public am2302 {
+class Temperature : public am2302 {
  public:
   float tempValue;
   float tempMaxValue = 29.0;
   float getSensorValues(bool);
 };
 
-class humid : public am2302 {
+class Humidity : public am2302 {
  public:
-   float humidValue;
+  float humidValue;
   float getSensorValues(int);
 };
 
-class soilMoist : public Sensor {
+class Moisture : public Sensor {
  public:
   float moistureValue;
   float getSensorValues(int);
@@ -51,10 +51,11 @@ enum sensorChoice
 WiFiClient espClient;
 PubSubClient client(espClient);
 DHT dht(DHTPIN, DHTTYPE);
+ASG asg;
 am2302 dhtSensor;
-soilMoist moist;
-humid humi;
-temperature temper;
+Moisture moisture;
+Humidity humidity;
+Temperature temperature;
 
 
 void setup() {
@@ -65,30 +66,32 @@ void setup() {
 }
 
 void loop() {
-  moist.readSensorValues();
+ asg.readSensorValues();
  delay(1000);
 }
 
+
 void ASG::readSensorValues()
 {
- float mst;
- float tmp;
- float hmd;
- moist.moistureValue = moist.getSensorValues(SOILMOISTPIN);
- mst = moist.moistureValue;
- monitorStage(mst, 1);
+ float temp_moisture;
+ float temp_temperature;
+ float temp_humidity;
+ 
+ moisture.moistureValue = moisture.getSensorValues(SOILMOISTPIN);
+ temp_moisture = moisture.moistureValue;
+ monitorStage(temp_moisture, 1);
     
- temper.tempValue = temper.getSensorValues(true);
- tmp = temper.tempValue;
- monitorStage(tmp, 2);
+ temperature.tempValue = temperature.getSensorValues(true);
+ temp_temperature = temperature.tempValue;
+ monitorStage(temp_temperature, 2);
     
- humi.humidValue = humi.getSensorValues(1);
- hmd=humi.humidValue;
- monitorStage(hmd, 3);
- dhtSensor.checkDHTStatus(hmd, tmp); 
+ humidity.humidValue = humidity.getSensorValues(1);
+ temp_humidity = humidity.humidValue;
+ monitorStage(temp_humidity, 3);
+ dhtSensor.checkDHTStatus(temp_humidity, temp_temperature); 
 }
 
-float soilMoist::getSensorValues(int smPin)
+float Moisture::getSensorValues(int smPin)
 {
  float soilMoistureRaw;
  soilMoistureRaw = analogRead(smPin)*(3.3/1024);
@@ -97,7 +100,7 @@ float soilMoist::getSensorValues(int smPin)
  return soilMoistureRaw;
 }
 
-float temperature::getSensorValues(bool temp)
+float Temperature::getSensorValues(bool temp)
 {
  float newTemp = dht.readTemperature();
  delay(1000);
@@ -105,7 +108,7 @@ float temperature::getSensorValues(bool temp)
   return newTemp;
 }
 
-float humid::getSensorValues(int humid)
+float Humidity::getSensorValues(int humid)
 {
  float newHumidity = dht.readHumidity();
  delay(1000);
@@ -131,6 +134,7 @@ float ASG::monitorStage(float sensorRaw, int sensorChoice)
  float soilMoisture;
  float soilMoistureRaw;
  int alertFlag = 0;
+ 
  switch(sensorChoice)
  {
   case MOISTURE: if (sensorRaw < 1.1)
@@ -171,7 +175,7 @@ float ASG::monitorStage(float sensorRaw, int sensorChoice)
           Serial.print(sensorRaw);
           Serial.println(" *C ");
 
-          if(sensorRaw > temper.tempMaxValue)
+          if(sensorRaw > temperature.tempMaxValue)
            {
             alertFlag = 21;
            }

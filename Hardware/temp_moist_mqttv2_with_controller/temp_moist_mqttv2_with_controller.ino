@@ -2,7 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-#define DHTPIN 2     // what pin we're connected to
+#define DHTPIN D2     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 #define wifi_ssid "Touch-fire"
 #define wifi_password "C3bui5th3b35t1!"
@@ -14,13 +14,13 @@
 #define humidity_topic "sensor/humidity"
 #define temperature_topic "sensor/temperature"
 #define moisture_topic "sensor/moisture"
-
+#define fanPin D4
 const int soilMoistPin = A0;
 const int solenoidPin = 3;
-const int fanPin = 4;
+
 const int wateringTime = 120000; //Set the watering time (2 min for a start)
 const float wateringThreshold = 15; //Value below which the garden gets watered
-const float tempThreshold = 32;
+const float tempThreshold = 25.40;
 bool watering = false;
 bool wateredToday = false;
 
@@ -39,6 +39,7 @@ void setup() {
   delay(10);
   dht.begin();
   setup_wifi();
+  pinMode(fanPin, OUTPUT);
   client.setServer(mqtt_server,8883);
 }
 
@@ -96,10 +97,10 @@ float diff = 0.1;
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+//  if (!client.connected()) {
+//    reconnect();
+//  }
+//  client.loop();
 
   long now = millis();
   if (now - lastMsg > 2000) {
@@ -168,7 +169,14 @@ void loop() {
   Serial.print(newTemp);
   Serial.println(" *C ");
   Serial.println("---------------------");
-
+  if (newTemp > tempThreshold) {
+    //water the mgarden
+    Serial.print("Fan ON");
+    digitalWrite(fanPin, HIGH);
+  }else{
+    Serial.print("Fan OFF");
+    digitalWrite(fanPin, LOW);
+  }
   if (checkBound(newTemp, temp, diff)) {
       temp = newTemp;
       Serial.print("New temperature:");
@@ -192,11 +200,6 @@ void loop() {
     
   }
 
-  if (temp > tempThreshold) {
-    //water the garden
-    digitalWrite(fanPin, HIGH);
-  }
-  digitalWrite(fanPin, LOW);
   
    if ((soilMoisture < wateringThreshold) && (wateredToday = false)) {
     //water the garden
@@ -223,3 +226,10 @@ void loop() {
     #endif
       delay(50);
 }
+
+
+class MQTTAdapter{
+  public:
+    float subscribeTopic(String topic);
+    int publishTopic(String topic, float data);
+}; 
